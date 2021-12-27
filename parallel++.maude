@@ -1,0 +1,184 @@
+load PARALLEL
+
+---- PARALLEL++: A simple parallel++ language and its rewriting logic semantics.
+
+---- Memory model with locations named by Qids holding Ints.
+
+fmod MEMORY++ is
+    including MEMORY .
+    including EXPRESSION .
+    protecting BOOL .
+    pr QID * (sort Qid to BQid, op qid to bqid) .
+    sort BExpression .
+    subsorts BQid Bool < BExpression .
+
+    op [_,_] : BQid Bool -> Memory .
+    op _in_ : BQid Memory -> Bool? . ---- cell allocated for Q?
+    
+    vars Q Q' : Qid .
+    vars BQ BQ' : BQid . 
+    var M : Memory . 
+    var B : Bool .
+
+    sorts Array ArrayContent .
+    subsort Expression < ArrayContent .
+    op arrayNil : -> ArrayContent .
+    op _;_ : ArrayContent ArrayContent -> ArrayContent [ctor assoc id: arrayNil] . 
+    op [_,_] : Qid ArrayContent -> Memory .
+    var C : ArrayContent .
+    eq Q in [Q, C] M = true .
+    ceq Q in [Q', C] M = Q in M if Q =/= Q' .
+    ceq Q in [Q', C] none = false if Q =/= Q' . --- Si falla, es aqui
+
+    sort BArray BArrayContent .
+    subsort BExpression < BArrayContent .
+    op barrayNil : -> BArrayContent .
+    op _;_ : BArrayContent BArrayContent -> BArrayContent [ctor assoc id: barrayNil] . 
+    op [_,_] : BQid BArrayContent -> Memory .
+    var BC : BArrayContent .
+    eq BQ in [BQ, BC] M = true .
+    ceq BQ in [BQ', BC] M = BQ in M if BQ =/= BQ' .
+    ceq BQ in [BQ', BC] none = false if BQ =/= BQ' .
+
+
+endfm
+
+---- Test comparing the contents of a named memory location to an integer. 
+---- By default, value of non-allocated Qid++ is 0.
+
+fmod TESTS++ is
+    inc TESTS .
+    inc MEMORY++ .
+    op _=_ : Qid Qid -> Test . --- Para expresiones
+    op _=_ : BQid BQid -> Test . --- Para Bool
+    op _>’_ : Qid Qid -> Test . --- Para expresiones
+    op _!=_ : Qid Qid -> Test .
+    op _!=_ : BQid BQid -> Test .
+    
+
+    var Q Q' : Qid . 
+    var BQ BQ' : BQid .
+    var M : Memory .
+    var N N' : Int . 
+    var B B' : Bool . 
+    vars T T' : Test .
+
+    eq eval(Q = Q', [Q, N] [Q', N'] M) = N == N' .
+   ceq eval(Q = Q', [Q, N] M) = N == 0 if Q in M =/= true .
+   ceq eval(Q = Q', M) = true if (Q in M =/= true) and (Q' in M =/= true) .
+
+    eq eval(Q >’ Q', [Q, N] [Q', N'] M) = N > N' .
+   ceq eval(Q >’ Q', [Q, N] M) = N > 0 if Q' in M =/= true .
+
+    eq eval(BQ = BQ', [BQ, B] [BQ', B'] M) = B == B' .
+   ceq eval(BQ = BQ', [BQ, B] M) = B == false if BQ' in M =/= true .
+   ceq eval(BQ = BQ', M) = true if (BQ in M =/= true) and (BQ' in M =/= true) .
+
+    eq eval(Q != Q', [Q, N] [Q', N'] M) = N =/= N' .
+   ceq eval(Q != Q', [Q, N] M) = N =/= 0 if Q in M =/= true .
+   ceq eval(Q != Q', M) = false if (Q in M =/= true) and (Q' in M =/= true) .
+
+    eq eval(BQ != BQ', [BQ, B] [BQ', B'] M) = B =/= B' .
+   ceq eval(BQ != BQ', [BQ, B] M) = B == true if BQ' in M =/= true .
+   ceq eval(BQ != BQ', M) = false if (BQ in M =/= true) and (BQ' in M =/= true) .
+
+endfm
+
+---- Syntax for arithmetic expressions, and their evaluation semantics.
+---- To avoid evaluation of expressions by themselves, the operators
+---- + and * are specified as constructors with syntax +’ and *’ 
+fmod EXPRESSION++ is
+    inc EXPRESSION . 
+    inc MEMORY++ .
+    inc SEQUENTIAL . 
+    op eval : BExpression Memory -> Bool .
+
+    var Q : Qid .
+    var BQ : BQid .
+    var B : Bool .
+    var I : Int .
+    var C : ArrayContent .
+    var BC : BArrayContent .
+    var N : Nat .
+    var M : Memory .
+
+    eq eval(B, M) = B .
+   ceq eval(BQ, M) = false if BQ in M =/= true .
+    eq eval(BQ, [BQ, B] M) = B . 
+
+    subsort Array < Expression .
+    op _[_] : Qid Expression -> Array .
+    eq eval(Q[0], [Q,(I ; C)] M) = I .
+    eq eval(Q[s N], [Q,(I ; C)] M) = eval(Q[N], [Q, C] M) .
+
+    subsort BArray < BExpression .
+    op _[_] : BQid Expression -> BArray .
+    eq eval(BQ[0], [BQ,(B ; BC)] M) = B .
+    eq eval(BQ[s N], [BQ,(B ; BC)] M) = eval(BQ[N], [BQ, BC] M) .
+
+    --- var Q : Qid . 
+    --- var M : Memory . 
+    --- vars N N’ : Int . 
+    --- vars E E’ : Expression .
+endfm
+
+
+
+---- Syntax for a trival sequential programming language. 
+---- We allow abstracting out program fragments as elements of sorts LoopingUserStatement and UserStatement. 
+---- LoopingUserStatements abstract out potentially nonterminating program fragments. 
+---- UserStatements which are not LoopingUserStatements abstract out terminating program fragments.
+
+eof
+
+fmod SEQUENTIAL++ is
+    inc SEQUENTIAL .
+    inc TESTS++ .
+    inc EXPRESSION++ .
+    
+    op _:=_ : Qid Expression -> Program .
+    op _:=_ : BQid BExpression -> Program .
+    op if_then_else_fi : Test Program Program -> Program .
+    op repeat_until_li : Program Test -> Program .
+    
+endfm
+
+
+
+mod PARALLEL++ is
+    inc PARALLEL .
+    inc SEQUENTIAL++ .
+    sorts Pid Process Soup MachineState .
+    subsort Process < Soup .
+    subsort Int < Pid .
+    op [_,_] : Pid Program -> Process .
+    op empty : -> Soup .
+    op _|_ : Soup Soup -> Soup [prec 61 assoc comm id: empty] .
+    op {_,_} : Soup Memory -> MachineState .
+    vars P R : Program . 
+    var  S : Soup .
+    var  U : UserStatement . 
+    var  L : LoopingUserStatement .
+    vars I J : Pid . 
+    var  M : Memory .
+    var  Q : Qid . 
+    vars N X : Int .
+    var  T : Test . 
+    var  E : Expression .
+    rl {[I, L ; R] | S, M} => {[I, L ; R] | S, M} .
+    rl {[I, U ; R] | S, M} => {[I, R] | S, M} .
+    rl {[I, (Q := E) ; R] | S, [Q, X] M} 
+      => {[I, R] | S, [Q, eval(E, [Q, X] M)] M} .
+   crl {[I, (Q := E) ; R] | S, M} 
+      => {[I, R] | S, [Q, eval(E, M)] M} 
+      if Q in M =/= true .
+    rl {[I, if T then P fi ; R] | S, M} 
+      => {[I, if eval(T, M) then P else skip fi ; R] | S, M} .
+    rl {[I, while T do P od ; R] | S, M} 
+      => {[I, if eval(T, M) 
+              then (P ; while T do P od) 
+              else skip 
+              fi ; R] | S, M} .
+    rl {[I, repeat P forever ; R] | S, M} 
+      => {[I, P ; repeat P forever ; R] | S, M} .
+endm
