@@ -166,7 +166,7 @@ mod PARALLEL++ is
 
     rl {[I, if T then P1 else P2 fi ; RP] | S, M} => {[I, if eval(T,M) then P1 else P2 fi ; RP] | S, M} . --- if then else
 
-    rl {[I, repeat P1 until T li ; RP] | S, M} => {[I, (P1 ; if T then skip else RP ; repeat RP until T li fi] | S, M} . --- repeat until
+    rl {[I, repeat P1 until T li ; RP] | S, M} => {[I, (P1 ; if T then skip else P1 ; repeat P1 until T li fi) ; RP] | S, M} . --- repeat until
 
     ---Asignacion Array Normal
     rl {[I, (Q [N1] := E) ; RP] | S, [Q, C] M} => {[I, RP] | S, [Q, modificarArray(C, N1, eval(E, [Q, C] M))] M} .
