@@ -148,6 +148,8 @@ mod PARALLEL++ is
     var  S : Soup .
     var  I : Pid . 
     var  M : Memory .
+    vars N1 N2 : Int .
+    vars B1 B2 : Bool .
     var  Q : Qid . 
     var BQ : BQid .
     var  T : Test . 
@@ -156,9 +158,24 @@ mod PARALLEL++ is
     var  C : ArrayContent .
     var BC : BArrayContent .
 
+    ---Operaciones necesarias para modificar array
+    op modificarArray : ArrayContent Expression Expression Memory -> ArrayContent .
+    op modificarBArray : BArrayContent Expression BExpression Memory -> BArrayContent .
+
+    eq modificarArray(N1 ; C, 0, E, M) = eval(E, M) ; C .
+    eq modificarArray(N1 ; C, s N2, E, M) = modificarArray(N1 ; C, N2, E, M)
+
+    eq modificarBArray(B1 ; BC, 0, BE, M) = eval(BE, M) ; BC .
+    eq modificarBArray(B1 ; BC, s N2, BE, M) = modificarArray(B1 ; BC, N2, BE, M)
+
     rl {[I, if T then P1 else P2 fi ; RP] | S, M} => {[I, if eval(T,M) then P1 else P2 fi ; RP] | S, M} --- if then else
 
     rl {[I, repeat P1 until T li ; RP] | S, M} => {I, (P1 ; while not(T) do P1 od) ; RP} --- repear until
+
+    ---Asignacion Array Normal
+    ---rl {[] | S, }
+
+    ---Asignacion Array Booleanos
 
 endm
 
