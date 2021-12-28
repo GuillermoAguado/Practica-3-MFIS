@@ -27,8 +27,6 @@ fmod MEMORY++ is
     op [_,_] : Qid ArrayContent -> Memory .
     var C : ArrayContent .
     eq Q in [Q, C] M = true .
-    ceq Q in [Q', C] M = Q in M if Q =/= Q' .
-    ceq Q in [Q', C] none = false if Q =/= Q' . --- Si falla, es aqui
 
     sort BArray BArrayContent .
     subsort BExpression < BArrayContent .
@@ -37,8 +35,6 @@ fmod MEMORY++ is
     op [_,_] : BQid BArrayContent -> Memory .
     var BC : BArrayContent .
     eq BQ in [BQ, BC] M = true .
-    ceq BQ in [BQ', BC] M = BQ in M if BQ =/= BQ' .
-    ceq BQ in [BQ', BC] none = false if BQ =/= BQ' .
 
 
 endfm
@@ -163,19 +159,20 @@ mod PARALLEL++ is
     op modificarBArray : BArrayContent Expression BExpression Memory -> BArrayContent .
 
     eq modificarArray(N1 ; C, 0, E, M) = eval(E, M) ; C .
-    eq modificarArray(N1 ; C, s N2, E, M) = modificarArray(N1 ; C, N2, E, M)
+    eq modificarArray(N1 ; C, s N2, E, M) = N1 ; modificarArray(C, N2, E, M) .
 
     eq modificarBArray(B1 ; BC, 0, BE, M) = eval(BE, M) ; BC .
-    eq modificarBArray(B1 ; BC, s N2, BE, M) = modificarArray(B1 ; BC, N2, BE, M)
+    eq modificarBArray(B1 ; BC, s N2, BE, M) = B1 ; modificarBArray(BC, N2, BE, M) .
 
-    rl {[I, if T then P1 else P2 fi ; RP] | S, M} => {[I, if eval(T,M) then P1 else P2 fi ; RP] | S, M} --- if then else
+    rl {[I, if T then P1 else P2 fi ; RP] | S, M} => {[I, if eval(T,M) then P1 else P2 fi ; RP] | S, M} . --- if then else
 
-    rl {[I, repeat P1 until T li ; RP] | S, M} => {I, (P1 ; while not(T) do P1 od) ; RP} --- repear until
+    rl {[I, repeat P1 until T li ; RP] | S, M} => {[I, (P1 ; while not(T) do P1 od) ; RP] | S, M} . --- repeat until
 
     ---Asignacion Array Normal
-    ---rl {[] | S, }
+    rl {[I, (Q [N1] := E) ; RP] | S, [Q, C] M} => {[I, RP] | S, [Q, modificarArray(C, N1, eval(E, [Q, C] M))] M} .
 
     ---Asignacion Array Booleanos
+    rl {[I, (BQ [N1] := BE) ; RP] | S, [BQ, BC] M} => {[I, RP] | S, [BQ, modificarBArray(BC, N1, eval(BE, [BQ, BC] M))] M} .
 
 endm
 
