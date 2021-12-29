@@ -9,12 +9,34 @@ fmod MEMORY++ is
     protecting BOOL .
     protecting QID * (sort Qid to BQid, op qid to bqid) .
     
+    --- Arrays
+    sort ArrayContent .
+    subsort Int < ArrayContent .
+    op arrayEmpty : -> ArrayContent .
+    op _;_ : ArrayContent ArrayContent -> ArrayContent [assoc id: arrayEmpty] .
+    op [_,_] : Qid ArrayContent -> Memory .
+    op _in_ : Qid Memory -> Bool? . ---- cell allocated for Q?
+    var Q : Qid .
+    var M : Memory .
+    var AC : ArrayContent .
+    eq Q in [Q, AC] M = true . ---- incomplete, only positive cases
+    
+    ---Booleanos
     op [_,_] : BQid Bool -> Memory .
     op _in_ : BQid Memory -> Bool? . ---- cell allocated for Q?
-    var BQ : BQid . 
-    var M : Memory . 
+    var BQ : BQid .
     var B : Bool .
     eq BQ in [BQ, B] M = true . ---- incomplete, only positive cases
+
+    ---Arrays Booleanos
+    sort BArrayContent .
+    subsort Bool < BArrayContent .
+    op barrayEmpty : -> BArrayContent .
+    op _;_ : BArrayContent BArrayContent -> BArrayContent [assoc id: barrayEmpty] .
+    op [_,_] : BQid BArrayContent -> Memory .
+    op _in_ : BQid Memory -> Bool? . ---- cell allocated for Q?
+    var BAC : BArrayContent .
+    eq BQ in [BQ, BAC] M = true .
 endfm
 
 --- Primero definimos las expresiones porque debemos usarlas en test
