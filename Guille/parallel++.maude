@@ -136,6 +136,12 @@ mod PARALLEL++ is
     var  T : Test . 
     var  E : Expression .
     
-    rl {[I, if T then P1 else P2 fi ; R] | S M} => 
-      {[I, if eval(T,M) then P1 else P2 fi ; R] | S M}
+    rl {[I, if T then P1 else P2 fi ; R] | S, M} => 
+      {[I, if eval(T,M) then P1 else P2 fi ; R] | S, M} .
+
+    rl {[I, repeat P1 until T li ; R] | S, M}
+      => {[I, P1 ; if eval(T, M) 
+                   then skip
+                   else (repeat P1 until T li)
+                   fi ; R] | S, M} .
 endm
