@@ -131,7 +131,8 @@ mod PARALLEL++ is
     var  L : LoopingUserStatement .
     vars I J : Pid . 
     var  M : Memory .
-    var  Q : Qid . 
+    var  Q : Qid .
+    var BQ : BQid . 
     vars N X : Int .
     var  T : Test . 
     var  E : Expression .
@@ -158,6 +159,12 @@ mod PARALLEL++ is
                    else (repeat P1 until T li)
                    fi ; R] | S, M} .
     ---Asignacion Arrays
-
+    crl {[I, (Q := AC) ; R] | S, M}
+        => {[I, R] | S, [Q, AC] M}
+        if Q in M =/= true .
     ---Asignacion Bools
+    crl {[I, (BQ := BAC) ; R] | S, M}
+        => {[I, R] | S, [BQ, BAC] M}
+        if BQ in M =/= true .
+
 endm
