@@ -57,6 +57,25 @@ fmod EXPRESSION++ is
     eq eval(B1, M) = B1 .
     eq eval(BQ, [BQ, B1] M) = B1 . 
    ceq eval(BQ,M) = false if BQ in M =/= true .
+
+    ---Array
+    sort Array .
+    subsort Array < Expression .
+    op _[_] : Qid Expression -> Array .
+    var Q : Qid .
+    vars N1 N2 : Int .
+    var AC : ArrayContent .
+    eq eval(Q[0], [Q, (N1 ; AC)] M) = N1 .
+    eq eval(Q[s N1], [Q, (N2 ; AC)] M) = eval(Q[N1], [Q, AC] M) .
+
+    ---Array Bool
+    sort BArray .
+    subsort BArray < BExpression .
+    op _[_] : BQid Expression -> BArray .
+    var BAC : BArrayContent .
+    eq eval(BQ[0], [BQ, (B1 ; BAC)] M) = B1 .
+    eq eval(BQ[s N1], [BQ, (B1 ; BAC)] M) = eval(BQ[N1], [BQ, BAC] M) .
+
 endfm
 
 ---- Test comparing the contents of a named memory location to an integer. 
@@ -94,14 +113,13 @@ fmod SEQUENTIAL++ is
     inc TESTS++ .
     inc EXPRESSION++ .
     inc SEQUENTIAL .
-    sorts UserStatement LoopingUserStatement Program .
-    subsort LoopingUserStatement < UserStatement < Program .
-    op skip : -> Program .
-    op _;_ : Program Program -> Program [prec 61 assoc id: skip] .
-    op _:=_ : Qid Expression -> Program .
-    op if_then_fi : Test Program -> Program .
-    op while_do_od : Test Program -> Program .
-    op repeat_forever : Program -> Program .
+    
+    ---op _:=_ : BQid BExpression -> Program .
+    op _:=_ : Array Expression -> Program .
+    op _:=_ : BArray BExpression -> Program .
+    op if_then_else_fi : Test Test Program -> Program .
+    op repeat_until_li : Test Test Program -> Program .
+    
 endfm
 
 mod PARALLEL++ is
