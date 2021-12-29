@@ -1,3 +1,4 @@
+load parallel.maude
 ---- PARALLEL++: A simple parallel++ language and its rewriting logic semantics.
 
 ---- Memory model with locations named by BQids holding Bools.
@@ -5,17 +6,15 @@
 fmod MEMORY++ is
     inc MEMORY .
     protecting INT .
-    protecting QID .
-    sorts Memory Bool? .
-    subsorts Bool < Bool? .
-    op none : -> Memory .
-    op __ : Memory Memory -> Memory [assoc comm id: none] .
-    op [_,_] : Qid Int -> Memory .
-    op _in_ : Qid Memory -> Bool? . ---- cell allocated for Q?
-    var Q : Qid . 
+    protecting BOOL .
+    protecting QID * (sort Qid to BQid, op qid to bqid) .
+    
+    op [_,_] : BQid Bool -> Memory .
+    op _in_ : BQid Memory -> Bool? . ---- cell allocated for Q?
+    var BQ : BQid . 
     var M : Memory . 
-    var N : Int .
-    eq Q in [Q, N] M = true . ---- incomplete, only positive cases
+    var B : Bool .
+    eq BQ in [BQ, B] M = true . ---- incomplete, only positive cases
 endfm
 
 eof
