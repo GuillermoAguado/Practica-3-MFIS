@@ -103,7 +103,6 @@ fmod TESTS++ is
     eq eval(BE1 != BE2, M) = eval(BE1, M) =/= eval(BE2, M) .
 endfm
 
-eof
 ---- Syntax for a trival sequential programming language. 
 ---- We allow abstracting out program fragments as elements of sorts LoopingUserStatement and UserStatement. 
 ---- LoopingUserStatements abstract out potentially nonterminating program fragments. 
@@ -117,8 +116,8 @@ fmod SEQUENTIAL++ is
     ---op _:=_ : BQid BExpression -> Program .
     op _:=_ : Array Expression -> Program .
     op _:=_ : BArray BExpression -> Program .
-    op if_then_else_fi : Test Test Program -> Program .
-    op repeat_until_li : Test Test Program -> Program .
+    op if_then_else_fi : Test Program Program -> Program .
+    op repeat_until_li : Program Test -> Program .
     
 endfm
 
@@ -126,7 +125,7 @@ mod PARALLEL++ is
     inc PARALLEL .
     inc SEQUENTIAL++ .
 
-    vars P R : Program . 
+    vars P1 P2 R : Program . 
     var  S : Soup .
     var  U : UserStatement . 
     var  L : LoopingUserStatement .
@@ -137,5 +136,6 @@ mod PARALLEL++ is
     var  T : Test . 
     var  E : Expression .
     
-    
+    rl {[I, if T then P1 else P2 fi ; R] | S M} => 
+      {[I, if eval(T,M) then P1 else P2 fi ; R] | S M}
 endm
