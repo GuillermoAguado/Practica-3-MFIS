@@ -135,9 +135,18 @@ mod PARALLEL++ is
     vars N X : Int .
     var  T : Test . 
     var  E : Expression .
-    
+    vars N1 N2 N3 : Int .
+    var AC : ArrayContent .
+    vars B1 B2 : Bool .
+    var BAC : BArrayContent .
+
     op modificarArray : ArrayContent Expression Expression -> ArrayContent .
-    op modificarBArray : ArrayContent Expression Expression -> ArrayContent .  
+    eq modificarArray(N1 ; AC, 0, N2) = N2 ; AC .
+    eq modificarArray(N1 ; AC, s N3, N2) = N1 ; modificarArray(AC, N3, N2) .
+
+    op modificarBArray : BArrayContent Expression BExpression -> BArrayContent .
+    eq modificarBArray(B1 ; BAC, 0, B2) = B2 ; BAC .
+    eq modificarBArray(B1 ; BAC, s N3, B2) = B1 ; modificarBArray(BAC, N3, B2) .
 
     ---if then else fi
     rl {[I, if T then P1 else P2 fi ; R] | S, M} => 
