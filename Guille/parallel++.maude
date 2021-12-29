@@ -1,8 +1,9 @@
----- PARALLEL: A simple parallel language and its rewriting logic semantics.
+---- PARALLEL++: A simple parallel++ language and its rewriting logic semantics.
 
----- Memory model with locations named by Qids holding Ints.
+---- Memory model with locations named by BQids holding Bools.
 
-fmod MEMORY is
+fmod MEMORY++ is
+    inc MEMORY .
     protecting INT .
     protecting QID .
     sorts Memory Bool? .
@@ -17,10 +18,11 @@ fmod MEMORY is
     eq Q in [Q, N] M = true . ---- incomplete, only positive cases
 endfm
 
+eof
 ---- Test comparing the contents of a named memory location to an integer. 
 ---- By default, value of non-allocated Qid is 0.
 
-fmod TESTS is
+fmod TESTS++ is
     inc MEMORY .
     sort Test .
     op _=_ : Qid Int -> Test .
@@ -41,7 +43,7 @@ endfm
 ---- Syntax for arithmetic expressions, and their evaluation semantics.
 ---- To avoid evaluation of expressions by themselves, the operators
 ---- + and * are specified as constructors with syntax +’ and *’ 
-fmod EXPRESSION is
+fmod EXPRESSION++ is
     inc MEMORY . 
     sort Expression .
     subsorts Qid Int < Expression .
@@ -66,7 +68,7 @@ endfm
 ---- LoopingUserStatements abstract out potentially nonterminating program fragments. 
 ---- UserStatements which are not LoopingUserStatements abstract out terminating program fragments.
 
-fmod SEQUENTIAL is
+fmod SEQUENTIAL++ is
     inc TESTS .
     inc EXPRESSION .
     sorts UserStatement LoopingUserStatement Program .
@@ -79,7 +81,7 @@ fmod SEQUENTIAL is
     op repeat_forever : Program -> Program .
 endfm
 
-mod PARALLEL is
+mod PARALLEL++ is
     inc SEQUENTIAL .
     inc TESTS .
     sorts Pid Process Soup MachineState .
