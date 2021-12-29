@@ -175,3 +175,17 @@ mod PARALLEL++ is
         => {[I, R] | S, [BQ, modificarBArray(BAC, N1, eval(BE, [BQ, BAC] M))] M} .
     
 endm
+
+eof
+
+Maude> load dekker++
+==========================================
+search in DEKKER++ : initial =>* {S | [1,crit1 ; R] | [2,crit2 ; P],M} .
+
+No solution.
+states: 152  rewrites: 1383 in 0ms cpu (2ms real) (~ rewrites/second)
+==========================================
+search in DEKKER++ : initial =>! MS:MachineState .
+
+No solution.
+states: 152  rewrites: 1383 in 0ms cpu (2ms real) (~ rewrites/second)
