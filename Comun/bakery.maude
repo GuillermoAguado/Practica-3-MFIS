@@ -1,0 +1,430 @@
+load model-checker.maude
+
+mod BAKERY is
+    protecting NAT .
+    including CONFIGURATION .
+    sort GBState .
+    op [[_]] : Configuration -> GBState .
+
+    ---- class BProcess | mode : Mode, number : Nat .
+    sorts BProcess Mode .
+    subsort BProcess < Cid .
+    ops sleep wait crit : -> Mode [ctor].
+    op BProcess : -> BProcess .
+    op mode:_ : Mode -> Attribute [gather(&)] .
+    op number:_ : Nat -> Attribute [gather(&)] .
+    --- Podemos usar el objeto BProcess como < o : BProcess | mode: unModo, number: 0 >
+
+    --- class Dispenser | next: Nat, last: Nat .
+    sort Dispenser .
+    subsort Dispenser < Cid .
+    subsort Nat < Oid .
+    op Dispenser : -> Dispenser .
+    op next:_ : Nat -> Attribute [gather(&)] .
+    op last:_ : Nat -> Attribute [gather(&)] .
+
+    --- Podemos usar el objeto Dispenser como < o : Dispenser | next: 1, last: 1 >
+
+    ---rl [nombre] : philosopher(n, thinking, p) => philosopher(n, hungry, p) .
+
+    var c : Configuration .
+    vars idDisp idBProc next1 last1 ticket : Nat .
+    --- var mode1 : Mode .
+    
+    rl  [takeNumber] :  [[ < idDisp : Dispenser | next: next1, last: last1 > < idBProc : BProcess | mode: sleep, number: 0 > c ]] => 
+                        [[ < idDisp : Dispenser | next: next1, last: s last1 > < idBProc : BProcess | mode: wait, number: last1 > c ]] .
+    crl [startCrit] :   [[ < idDisp : Dispenser | next: next1, last: last1 > < idBProc : BProcess | mode: wait, number: ticket > c]] => 
+                        [[ < idDisp : Dispenser | next: next1, last: last1 > < idBProc : BProcess | mode: crit, number: ticket > c ]] if next1 == ticket .
+    rl  [endCrit] :     [[ < idDisp : Dispenser | next: next1, last: last1 > < idBProc : BProcess | mode: crit, number: ticket > c ]] => 
+                        [[ < idDisp : Dispenser | next: s next1, last: last1 > < idBProc : BProcess | mode: sleep, number: 0 > c ]] .
+    
+    var num : Nat .
+    op initial : Nat -> GBState .
+    eq initial(num) = [[ initialConfiguration(num) ]] .
+
+    op initialConfiguration : Nat -> Configuration .
+    eq initialConfiguration(0) = < 0 : Dispenser | next: 1, last: 1 > .
+    eq initialConfiguration(s num) = < s num : BProcess | mode: sleep, number: 0 > initialConfiguration(num) .
+
+endm
+
+mod ABSTRACT-BAKERY is
+    including BAKERY .
+    protecting NAT .
+    
+    var c : Configuration .
+    vars num1 id num2 redu : Nat .
+    var num : NzNat .
+    var modeAux : Mode .
+
+    ceq [[ < 0 : Dispenser | next: num1, last: num2 > c ]] = [[ < 0 : Dispenser | next: 1, last: s(sd(num2, num1)) > decIndex(c, sd(num1, 1)) ]] 
+        if num1 > 1 .
+
+    op decIndex : Configuration Nat -> Configuration . ---Baja el indice de la configuracion redu unidades
+    eq decIndex(none , redu) = none .
+    eq decIndex(< id : BProcess | mode: modeAux, number: 0 > c , redu) = < id : BProcess | mode: modeAux, number: 0 > decIndex(c, redu) .
+    eq decIndex(< id : BProcess | mode: modeAux, number: num > c , redu) = < id : BProcess | mode: modeAux, number: sd(num, redu) > decIndex(c, redu) . --- Porque sabemos que aqui nunca se entra con ticket 1
+
+    --- rl [endCrit] : [[ < idDisp : Dispenser | next: next1, last: last1 > < idBProc : BProcess | mode: crit, number: ticket > c ]] => [[ < idDisp : Dispenser | next: s next1, last: last1 > < idBProc : BProcess | mode: sleep, number: 0 > bajarIndice(c) ]] .
+
+
+endm
+
+mod ABSTRACT-BAKERY-PREDS is
+    protecting ABSTRACT-BAKERY .
+    including SATISFACTION .
+
+    subsort GBState < State .    
+    
+    op proc-crit : Nat -> Prop .
+    op proc-no-crit : Nat -> Prop .
+    op proc-status : Nat Mode -> Prop .
+
+    vars modeAux : Mode .
+    var id, num : Nat .
+    vars c : Configuration .
+
+    eq [[< id : BProcess | mode: crit, number: num > c]] |= proc-crit(id) = true .
+    eq [[< id : BProcess | mode: sleep, number: num > c]] |= proc-no-crit(id) = true .
+    eq [[< id : BProcess | mode: wait, number: num > c]] |= proc-no-crit(id) = true .
+    eq [[< id : BProcess | mode: modeAux, number: num > c]] |= proc-status(id, modeAux) = true .
+    
+
+endm
+
+mod ABSTRACT-BAKERY-CHECK is
+    protecting ABSTRACT-BAKERY-PREDS .
+    including MODEL-CHECKER .
+    including LTL-SIMPLIFIER .
+endm
+
+mod BAKERY+ is
+    extending BAKERY .
+
+    var next : Nat .
+    var modeAux : Mode .
+    op minTicket : Configuration Nat -> Nat . --- Presunto Nat
+    eq minTicket (none, next) =  next .
+    eq minTicket (< idBProc : BProcess | mode: modeAux, number: ticket >, next) =  ticket .
+    ceq minTicket (< idBProc : BProcess | mode: modeAux, number: ticket > c, next) =  min(ticket, minTicket(c, next)) if c =/= none .
+
+    op filterSleep : Configuration -> Configuration .
+    eq filterSleep (none) = none .
+    eq filterSleep (< idBProc : BProcess | mode: wait, number: ticket > c) = < idBProc : BProcess | mode: wait, number: ticket > filterSleep(c) .
+    eq filterSleep (< idBProc : BProcess | mode: crit, number: ticket > c) = < idBProc : BProcess | mode: crit, number: ticket > filterSleep(c) .
+    eq filterSleep (< idBProc : BProcess | mode: sleep, number: ticket > c) = filterSleep(c) .
+    
+
+    var c : Configuration .
+    vars idDisp idBProc next1 last1 ticket : Nat .
+    rl [leaveBakery] :  [[ < idDisp : Dispenser | next: next1, last: last1 > < idBProc : BProcess | mode: wait, number: ticket > c]] => 
+                        [[ < idDisp : Dispenser | next: next1, last: last1 > < idBProc : BProcess | mode: sleep, number: 0 > c ]] .
+    crl [skipTurn] :    [[ < idDisp : Dispenser | next: next1, last: last1 > c]] => 
+                        [[ < idDisp : Dispenser | next: s next1, last: last1 > c]] if minTicket(filterSleep(c), next1) =/= next1 .
+
+endm
+
+mod ABSTRACT-BAKERY+ is
+    including BAKERY+ .
+    protecting NAT .
+    
+    var c : Configuration .
+    vars num num1 id num2 redu : Nat .
+    var NZnum : NzNat .
+    var modeAux : Mode .
+
+    ceq [[ < 0 : Dispenser | next: num1, last: num2 > c ]] = [[ < 0 : Dispenser | next: 1, last: s(sd(num2, num1)) > decIndex(c, sd(num1, 1)) ]] 
+        if num1 > 1 .
+
+    op decIndex : Configuration Nat -> Configuration . ---Baja el indice de la configuracion redu unidades
+    eq decIndex(none , redu) = none .
+    eq decIndex(< id : BProcess | mode: modeAux, number: 0 > c , redu) = < id : BProcess | mode: modeAux, number: 0 > decIndex(c, redu) .
+    eq decIndex(< id : BProcess | mode: modeAux, number: NZnum > c , redu) = < id : BProcess | mode: modeAux, number: sd(NZnum, redu) > decIndex(c, redu) . --- Porque sabemos que aqui nunca se entra con ticket 1
+
+    --- Ampliacion debido a BAKERY+
+    ceq [[ < 0 : Dispenser | next: 1, last: num2 > c ]] = [[ < 0 : Dispenser | next: 1, last: sd(num2, 1) > deleteHueco(c, primerHueco(c,1,c)) ]] 
+        if numProcesos(c) < sd(num2, 1) . ---/\ primerHueco(c, 1, c) =/= 0 --- Hace falta poner justo ANTES de primerHueco una funcion que nos calcule que la longitud de la cola de la panaderia es menor que last - 1, es decir, ALGUIEN se ha ido
+    
+    var pos : Nat .
+    var numSearched : Nat .
+    vars c1, c2 : Configuration .
+    
+    op deleteHueco :  Configuration Nat -> Configuration . --- Baja todos los indices posteriores a pos 
+    eq deleteHueco(none, pos) = none .
+    ceq deleteHueco(< id : BProcess | mode: modeAux, number: num > c , pos) =  < id : BProcess | mode: modeAux, number: num > deleteHueco(c, pos) if num < pos .
+    ceq deleteHueco(< id : BProcess | mode: modeAux, number: num > c , pos) =  < id : BProcess | mode: modeAux, number: sd(num, 1) > deleteHueco(c, pos) if num > pos .
+
+    op primerHueco : Configuration Nat Configuration -> Nat .
+    eq primerHueco(none, numSearched, c) = numSearched .
+    ceq primerHueco(< id : BProcess | mode: modeAux, number: num > c1, numSearched, c2) = primerHueco(c1,numSearched,c2) if numSearched =/= num . --- Si numSearched NO es igual a num
+    ceq primerHueco(< id : BProcess | mode: modeAux, number: num > c1, numSearched, c2) = primerHueco(c2,s numSearched,c2) if numSearched == num . --- Si numSearched SI es igual a num (es decir hemos encontrado la posicion buscada)
+
+    op numProcesos : Configuration -> Nat .
+    eq numProcesos(none) = 0 .
+    eq numProcesos(< id : BProcess | mode: crit, number: num > c1) = 1 + numProcesos(c1) .
+    eq numProcesos(< id : BProcess | mode: wait, number: num > c1) = 1 + numProcesos(c1) .
+    eq numProcesos(< id : BProcess | mode: sleep, number: num > c1) = numProcesos(c1) .
+endm
+
+eof
+
+search initial(5) =>* g:GBState .
+
+red minTicket (filterSleep(< 1 : BProcess | mode: wait, number: 6 > < 2 : BProcess | mode: wait, number: 7 > < 3 : BProcess | mode: sleep, number: 4 > < 4 : BProcess | mode: wait, number: 5 >), 15) .
+red minTicket (filterSleep(< 1 : BProcess | mode: sleep, number: 6 > < 2 : BProcess | mode: sleep, number: 7 > < 3 : BProcess | mode: sleep, number: 4 > < 4 : BProcess | mode: sleep, number: 5 >), 15) .
+state 0, GBState: [[< 0 : Dispenser | next: 1,last: 1 > < 1 : BProcess | mode: sleep,number: 0 > < 2 : BProcess | mode:
+sleep,number: 0 > < 3 : BProcess | mode: sleep,number: 0 >]]
+===[ rl [[c < idDisp : Dispenser | next: next1,last: last1 > < idBProc : BProcess | mode: sleep,number: 0 >]] => [[(c <
+    idBProc : BProcess | mode: wait,number: last1 >) < idDisp : Dispenser | next: next1,last: s last1 >]] [label takeNumber] .
+    ]===>
+state 1, GBState: [[< 0 : Dispenser | next: 1,last: 2 > < 1 : BProcess | mode: wait,number: 1 > < 2 : BProcess | mode: sleep,
+    number: 0 > < 3 : BProcess | mode: sleep,number: 0 >]]
+===[ rl [[c < idDisp : Dispenser | next: next1,last: last1 > < idBProc : BProcess | mode: sleep,number: 0 >]] => [[(c <
+    idBProc : BProcess | mode: wait,number: last1 >) < idDisp : Dispenser | next: next1,last: s last1 >]] [label takeNumber] .
+    ]===>
+state 6, GBState: [[< 0 : Dispenser | next: 1,last: 3 > < 1 : BProcess | mode: wait,number: 1 > < 2 : BProcess | mode: sleep,
+    number: 0 > < 3 : BProcess | mode: wait,number: 2 >]]
+===[ rl [[c < idDisp : Dispenser | next: next1,last: last1 > < idBProc : BProcess | mode: sleep,number: 0 >]] => [[(c <
+    idBProc : BProcess | mode: wait,number: last1 >) < idDisp : Dispenser | next: next1,last: s last1 >]] [label takeNumber] .
+    ]===>
+state 20, GBState: [[< 0 : Dispenser | next: 1,last: 4 > < 1 : BProcess | mode: wait,number: 1 > < 2 : BProcess | mode: wait,
+    number: 3 > < 3 : BProcess | mode: wait,number: 2 >]]
+===[ rl [[c < idDisp : Dispenser | next: next1,last: last1 > < idBProc : BProcess | mode: wait,number: ticket >]] => [[(c <
+    idBProc : BProcess | mode: sleep,number: 0 >) < idDisp : Dispenser | next: next1,last: last1 >]] [label leaveBakery] .
+    ]===>
+state 49, GBState: [[< 0 : Dispenser | next: 1,last: 4 > < 1 : BProcess | mode: wait,number: 1 > < 2 : BProcess | mode: sleep,
+    number: 0 > < 3 : BProcess | mode: wait,number: 2 >]]
+===[ rl [[c < idDisp : Dispenser | next: next1,last: last1 > < idBProc : BProcess | mode: sleep,number: 0 >]] => [[(c <
+    idBProc : BProcess | mode: wait,number: last1 >) < idDisp : Dispenser | next: next1,last: s last1 >]] [label takeNumber] .
+    ]===>
+state 103, GBState: [[< 0 : Dispenser | next: 1,last: 5 > < 1 : BProcess | mode: wait,number: 1 > < 2 : BProcess | mode: wait,
+    number: 4 > < 3 : BProcess | mode: wait,number: 2 >]]
+===[ crl [[c < idDisp : Dispenser | next: next1,last: last1 > < idBProc : BProcess | mode: wait,number: ticket >]] => [[(c <
+    idBProc : BProcess | mode: crit,number: ticket >) < idDisp : Dispenser | next: next1,last: last1 >]] if next1 == ticket =
+    true [label startCrit] . ]===>
+state 194, GBState: [[< 0 : Dispenser | next: 1,last: 5 > < 1 : BProcess | mode: crit,number: 1 > < 2 : BProcess | mode: wait,
+    number: 4 > < 3 : BProcess | mode: wait,number: 2 >]]
+===[ crl [[c < idDisp : Dispenser | next: next1,last: last1 >]] => [[c < idDisp : Dispenser | next: s next1,last: last1 >]] if
+    minTicket(filterSleep(c), next1) =/= next1 = true [label skipTurn] . ]===>
+state 335, GBState: [[< 0 : Dispenser | next: 2,last: 5 > < 1 : BProcess | mode: crit,number: 1 > < 2 : BProcess | mode: wait,
+    number: 4 > < 3 : BProcess | mode: wait,number: 2 >]]
+===
+
+[ rl [[c < idDisp : Dispenser | next: next1,last: last1 > < idBProc : BProcess | mode: crit,number: ticket >]] => [[(c <
+    idBProc : BProcess | mode: sleep,number: 0 >) < idDisp : Dispenser | next: s next1,last: last1 >]] [label endCrit] . ]===>
+state 553, GBState: [[< 0 : Dispenser | next: 3,last: 5 > < 1 : BProcess | mode: sleep,number: 0 > < 2 : BProcess | mode:
+    wait,number: 4 > < 3 : BProcess | mode: wait,number: 2 >]]
+
+
+===[ crl [[c < idDisp : Dispenser | next: next1,last: last1 >]] => [[c < idDisp : Dispenser | next: s next1,last: last1 >]] if
+    minTicket(filterSleep(c), next1) =/= next1 = true [label skipTurn] . ]===>
+state 876, GBState: [[< 0 : Dispenser | next: 4,last: 5 > < 1 : BProcess | mode: sleep,number: 0 > < 2 : BProcess | mode:
+    wait,number: 4 > < 3 : BProcess | mode: wait,number: 2 >]]
+===[ crl [[c < idDisp : Dispenser | next: next1,last: last1 >]] => [[c < idDisp : Dispenser | next: s next1,last: last1 >]] if
+    minTicket(filterSleep(c), next1) =/= next1 = true [label skipTurn] . ]===>
+state 1343, GBState: [[< 0 : Dispenser | next: 5,last: 5 > < 1 : BProcess | mode: sleep,number: 0 > < 2 : BProcess | mode:
+    wait,number: 4 > < 3 : BProcess | mode: wait,number: 2 >]]
+===[ crl [[c < idDisp : Dispenser | next: next1,last: last1 >]] => [[c < idDisp : Dispenser | next: s next1,last: last1 >]] if
+    minTicket(filterSleep(c), next1) =/= next1 = true [label skipTurn] . ]===>
+state 1997, GBState: [[< 0 : Dispenser | next: 6,last: 5 > < 1 : BProcess | mode: sleep,number: 0 > < 2 : BProcess | mode:
+    wait,number: 4 > < 3 : BProcess | mode: wait,number: 2 >]]
+
+
+--- red minTicket (< 1 : BProcess | mode: wait, number: 6 > < 2 : BProcess | mode: wait, number: 7 > < 3 : BProcess | mode: sleep, number: 4 > < 4 : BProcess | mode: wait, number: 5 >) .
+
+search initial(5) =>* [[ < idDisp:Nat : Dispenser | next: next1:Nat, last: last1:Nat > < idBProc1:Nat : BProcess | mode: crit, number: num1:Nat > < idBProc2:Nat : BProcess | mode: crit, number: num2:Nat > c:Configuration ]] .
+search [2000] initial(5) =>* [[ < idDisp:Nat : Dispenser | next: next1:Nat, last: last1:Nat > < idBProc1:Nat : BProcess | mode: crit, number: num1:Nat > < idBProc2:Nat : BProcess | mode: crit, number: num2:Nat > c:Configuration ]] .
+search initial(5) =>! g:GBState .
+
+--- [Q5]
+
+
+
+Maude> search initial(3) =>* g:GBState . 
+search in ABSTRACT-BAKERY : initial(3) =>* g:GBState .
+
+Solution 1 (state 0)
+states: 1  rewrites: 6 in 0ms cpu (1ms real) (~ rewrites/second)
+g:GBState --> [[< 0 : Dispenser | next: 1,last: 1 > < 1 : BProcess | mode: sleep,number: 0 > < 2 : BProcess | mode: sleep,number: 0 > < 3 : BProcess | mode: sleep,number: 0 >]]  
+
+Solution 2 (state 1)
+states: 2  rewrites: 8 in 0ms cpu (6ms real) (~ rewrites/second)
+g:GBState --> [[< 0 : Dispenser | next: 1,last: 2 > < 1 : BProcess | mode: wait,number: 1 > < 2 : BProcess | mode: sleep,number: 0 > < 3 : BProcess | mode: sleep,number: 0 >]]   
+
+Solution 3 (state 2)
+states: 3  rewrites: 10 in 0ms cpu (11ms real) (~ rewrites/second)
+g:GBState --> [[< 0 : Dispenser | next: 1,last: 2 > < 1 : BProcess | mode: sleep,number: 0 > < 2 : BProcess | mode: wait,number: 1 > < 3 : BProcess | mode: sleep,number: 0 >]]
+
+Solution 4 (state 3)
+states: 4  rewrites: 12 in 0ms cpu (16ms real) (~ rewrites/second)
+g:GBState --> [[< 0 : Dispenser | next: 1,last: 2 > < 1 : BProcess | mode: sleep,number: 0 > < 2 : BProcess | mode: sleep,number: 0 > < 3 : BProcess | mode: wait,number: 1 >]]   
+
+Solution 5 (state 4)
+states: 5  rewrites: 14 in 0ms cpu (21ms real) (~ rewrites/second)
+g:GBState --> [[< 0 : Dispenser | next: 1,last: 3 > < 1 : BProcess | mode: wait,number: 1 > < 2 : BProcess | mode: wait,number: 2 > < 3 : BProcess | mode: sleep,number: 0 >]]    
+
+Solution 6 (state 5)
+states: 6  rewrites: 16 in 0ms cpu (25ms real) (~ rewrites/second)
+g:GBState --> [[< 0 : Dispenser | next: 1,last: 3 > < 1 : BProcess | mode: wait,number: 1 > < 2 : BProcess | mode: sleep,number: 0 > < 3 : BProcess | mode: wait,number: 2 >]]
+
+Solution 7 (state 6)
+states: 7  rewrites: 19 in 0ms cpu (30ms real) (~ rewrites/second)
+g:GBState --> [[< 0 : Dispenser | next: 1,last: 2 > < 1 : BProcess | mode: crit,number: 1 > < 2 : BProcess | mode: sleep,number: 0 > < 3 : BProcess | mode: sleep,number: 0 >]]   
+
+Solution 8 (state 7)
+states: 8  rewrites: 21 in 0ms cpu (35ms real) (~ rewrites/second)
+g:GBState --> [[< 0 : Dispenser | next: 1,last: 3 > < 1 : BProcess | mode: wait,number: 2 > < 2 : BProcess | mode: wait,number: 1 > < 3 : BProcess | mode: sleep,number: 0 >]]    
+
+Solution 9 (state 8)
+states: 9  rewrites: 23 in 0ms cpu (39ms real) (~ rewrites/second)
+g:GBState --> [[< 0 : Dispenser | next: 1,last: 3 > < 1 : BProcess | mode: sleep,number: 0 > < 2 : BProcess | mode: wait,number: 1 > < 3 : BProcess | mode: wait,number: 2 >]]    
+
+Solution 10 (state 9)
+states: 10  rewrites: 26 in 0ms cpu (44ms real) (~ rewrites/second)
+g:GBState --> [[< 0 : Dispenser | next: 1,last: 2 > < 1 : BProcess | mode: sleep,number: 0 > < 2 : BProcess | mode: crit,number: 1 > < 3 : BProcess | mode: sleep,number: 0 >]]   
+
+Solution 11 (state 10)
+states: 11  rewrites: 28 in 0ms cpu (48ms real) (~ rewrites/second)
+g:GBState --> [[< 0 : Dispenser | next: 1,last: 3 > < 1 : BProcess | mode: wait,number: 2 > < 2 : BProcess | mode: sleep,number: 0 > < 3 : BProcess | mode: wait,number: 1 >]]    
+
+Solution 12 (state 11)
+states: 12  rewrites: 30 in 0ms cpu (53ms real) (~ rewrites/second)
+g:GBState --> [[< 0 : Dispenser | next: 1,last: 3 > < 1 : BProcess | mode: sleep,number: 0 > < 2 : BProcess | mode: wait,number: 2 > < 3 : BProcess | mode: wait,number: 1 >]]    
+
+Solution 13 (state 12)
+states: 13  rewrites: 33 in 0ms cpu (58ms real) (~ rewrites/second)
+g:GBState --> [[< 0 : Dispenser | next: 1,last: 2 > < 1 : BProcess | mode: sleep,number: 0 > < 2 : BProcess | mode: sleep,number: 0 > < 3 : BProcess | mode: crit,number: 1 >]]
+
+Solution 14 (state 13)
+states: 14  rewrites: 35 in 0ms cpu (63ms real) (~ rewrites/second)
+g:GBState --> [[< 0 : Dispenser | next: 1,last: 4 > < 1 : BProcess | mode: wait,number: 1 > < 2 : BProcess | mode: wait,number: 2 > < 3 : BProcess | mode: wait,number: 3 >]]     
+
+Solution 15 (state 14)
+states: 15  rewrites: 38 in 0ms cpu (68ms real) (~ rewrites/second)
+g:GBState --> [[< 0 : Dispenser | next: 1,last: 3 > < 1 : BProcess | mode: crit,number: 1 > < 2 : BProcess | mode: wait,number: 2 > < 3 : BProcess | mode: sleep,number: 0 >]]    
+
+Solution 16 (state 15)
+states: 16  rewrites: 41 in 0ms cpu (74ms real) (~ rewrites/second)
+g:GBState --> [[< 0 : Dispenser | next: 1,last: 4 > < 1 : BProcess | mode: wait,number: 1 > < 2 : BProcess | mode: wait,number: 3 > < 3 : BProcess | mode: wait,number: 2 >]]
+
+Solution 17 (state 16)
+states: 17  rewrites: 44 in 15ms cpu (79ms real) (2816 rewrites/second)
+g:GBState --> [[< 0 : Dispenser | next: 1,last: 3 > < 1 : BProcess | mode: crit,number: 1 > < 2 : BProcess | mode: sleep,number: 0 > < 3 : BProcess | mode: wait,number: 2 >]]    
+
+Solution 18 (state 17)
+states: 18  rewrites: 61 in 15ms cpu (85ms real) (3904 rewrites/second)
+g:GBState --> [[< 0 : Dispenser | next: 1,last: 4 > < 1 : BProcess | mode: wait,number: 2 > < 2 : BProcess | mode: wait,number: 1 > < 3 : BProcess | mode: wait,number: 3 >]]     
+
+Solution 19 (state 18)
+states: 19  rewrites: 65 in 15ms cpu (89ms real) (4160 rewrites/second)
+g:GBState --> [[< 0 : Dispenser | next: 1,last: 3 > < 1 : BProcess | mode: wait,number: 2 > < 2 : BProcess | mode: crit,number: 1 > < 3 : BProcess | mode: sleep,number: 0 >]]    
+
+Solution 20 (state 19)
+states: 20  rewrites: 67 in 31ms cpu (95ms real) (2144 rewrites/second)
+g:GBState --> [[< 0 : Dispenser | next: 1,last: 4 > < 1 : BProcess | mode: wait,number: 3 > < 2 : BProcess | mode: wait,number: 1 > < 3 : BProcess | mode: wait,number: 2 >]]     
+
+Solution 21 (state 20)
+states: 21  rewrites: 70 in 31ms cpu (100ms real) (2240 rewrites/second)
+g:GBState --> [[< 0 : Dispenser | next: 1,last: 3 > < 1 : BProcess | mode: sleep,number: 0 > < 2 : BProcess | mode: crit,number: 1 > < 3 : BProcess | mode: wait,number: 2 >]]    
+
+Solution 22 (state 21)
+states: 22  rewrites: 87 in 31ms cpu (104ms real) (2784 rewrites/second)
+g:GBState --> [[< 0 : Dispenser | next: 1,last: 4 > < 1 : BProcess | mode: wait,number: 2 > < 2 : BProcess | mode: wait,number: 3 > < 3 : BProcess | mode: wait,number: 1 >]]
+
+Solution 23 (state 22)
+states: 23  rewrites: 91 in 31ms cpu (110ms real) (2912 rewrites/second)
+g:GBState --> [[< 0 : Dispenser | next: 1,last: 3 > < 1 : BProcess | mode: wait,number: 2 > < 2 : BProcess | mode: sleep,number: 0 > < 3 : BProcess | mode: crit,number: 1 >]]    
+
+Solution 24 (state 23)
+states: 24  rewrites: 93 in 31ms cpu (115ms real) (2976 rewrites/second)
+g:GBState --> [[< 0 : Dispenser | next: 1,last: 4 > < 1 : BProcess | mode: wait,number: 3 > < 2 : BProcess | mode: wait,number: 2 > < 3 : BProcess | mode: wait,number: 1 >]]     
+
+Solution 25 (state 24)
+states: 25  rewrites: 97 in 31ms cpu (119ms real) (3104 rewrites/second)
+g:GBState --> [[< 0 : Dispenser | next: 1,last: 3 > < 1 : BProcess | mode: sleep,number: 0 > < 2 : BProcess | mode: wait,number: 2 > < 3 : BProcess | mode: crit,number: 1 >]]
+
+Solution 26 (state 25)
+states: 26  rewrites: 114 in 46ms cpu (124ms real) (2432 rewrites/second)
+g:GBState --> [[< 0 : Dispenser | next: 1,last: 4 > < 1 : BProcess | mode: crit,number: 1 > < 2 : BProcess | mode: wait,number: 2 > < 3 : BProcess | mode: wait,number: 3 >]]     
+
+Solution 27 (state 26)
+states: 27  rewrites: 133 in 46ms cpu (129ms real) (2837 rewrites/second)
+g:GBState --> [[< 0 : Dispenser | next: 1,last: 4 > < 1 : BProcess | mode: crit,number: 1 > < 2 : BProcess | mode: wait,number: 3 > < 3 : BProcess | mode: wait,number: 2 >]]     
+
+Solution 28 (state 27)
+states: 28  rewrites: 153 in 46ms cpu (133ms real) (3264 rewrites/second)
+g:GBState --> [[< 0 : Dispenser | next: 1,last: 4 > < 1 : BProcess | mode: wait,number: 2 > < 2 : BProcess | mode: crit,number: 1 > < 3 : BProcess | mode: wait,number: 3 >]]     
+
+Solution 29 (state 28)
+states: 29  rewrites: 172 in 46ms cpu (139ms real) (3669 rewrites/second)
+g:GBState --> [[< 0 : Dispenser | next: 1,last: 4 > < 1 : BProcess | mode: wait,number: 3 > < 2 : BProcess | mode: crit,number: 1 > < 3 : BProcess | mode: wait,number: 2 >]]     
+
+Solution 30 (state 29)
+states: 30  rewrites: 192 in 62ms cpu (143ms real) (3072 rewrites/second)
+g:GBState --> [[< 0 : Dispenser | next: 1,last: 4 > < 1 : BProcess | mode: wait,number: 2 > < 2 : BProcess | mode: wait,number: 3 > < 3 : BProcess | mode: crit,number: 1 >]]     
+
+Solution 31 (state 30)
+states: 31  rewrites: 211 in 62ms cpu (148ms real) (3376 rewrites/second)
+g:GBState --> [[< 0 : Dispenser | next: 1,last: 4 > < 1 : BProcess | mode: wait,number: 3 > < 2 : BProcess | mode: wait,number: 2 > < 3 : BProcess | mode: crit,number: 1 >]]     
+
+No more solutions.
+states: 31  rewrites: 309 in 62ms cpu (153ms real) (4944 rewrites/second)
+
+---[Q6]
+Maude> red modelCheck(initial(5), [] ((proc-crit(1) /\ proc-no-crit(2) /\ proc-no-crit(3) /\ proc-no-crit(4) /\ proc-no-crit(5)) \/ 
+                                (proc-no-crit(1) /\ proc-crit(2) /\ proc-no-crit(3) /\ proc-no-crit(4) /\ proc-no-crit(5)) \/ 
+                                (proc-no-crit(1) /\ proc-no-crit(2) /\ proc-crit(3) /\ proc-no-crit(4) /\ proc-no-crit(5)) \/
+                                (proc-no-crit(1) /\ proc-no-crit(2) /\ proc-no-crit(3) /\ proc-crit(4) /\ proc-no-crit(5)) \/
+                                (proc-no-crit(1) /\ proc-no-crit(2) /\ proc-no-crit(3) /\ proc-no-crit(4) /\ proc-crit(5)) \/
+                                (proc-no-crit(1) /\ proc-no-crit(2) /\ proc-no-crit(3) /\ proc-no-crit(4) /\ proc-no-crit(5))
+                                )) .
+reduce in ABSTRACT-BAKERY-CHECK : modelCheck(initial(5), [](proc-no-crit(5) /\ (proc-no-crit(4) /\ (proc-no-crit(3) /\ (proc-no-crit(1) /\ proc-no-crit(2)))) \/ (
+    proc-crit(5) /\ (proc-no-crit(4) /\ (proc-no-crit(3) /\ (proc-no-crit(1) /\ proc-no-crit(2)))) \/ (proc-no-crit(5) /\ (proc-crit(4) /\ (proc-no-crit(3) /\ (proc-no-crit(1)   
+    /\ proc-no-crit(2)))) \/ (proc-no-crit(5) /\ (proc-no-crit(4) /\ (proc-crit(3) /\ (proc-no-crit(1) /\ proc-no-crit(2)))) \/ (proc-no-crit(5) /\ (proc-no-crit(4) /\ (
+    proc-no-crit(3) /\ (proc-crit(1) /\ proc-no-crit(2)))) \/ proc-no-crit(5) /\ (proc-no-crit(4) /\ (proc-no-crit(3) /\ (proc-crit(2) /\ proc-no-crit(1)))))))))) .
+rewrites: 206341 in 1171ms cpu (1167ms real) (176077 rewrites/second)
+result Bool: true
+
+--- [Q7]
+
+Maude> red modelCheck(initial(5), [] ( ([] (proc-status(1,sleep) -> <> proc-status (1,wait))) /\ ([] (proc-status(1,wait) -> <> proc-status (1,crit))) /\ ([] (proc-status(1,crit) -> <> proc-status (1,sleep))) \/
+                                ([] (proc-status(2,sleep) -> <> proc-status (2,wait))) /\ ([] (proc-status(2,wait) -> <> proc-status (2,crit))) /\ ([] (proc-status(2,crit) -> <> 
+proc-status (2,sleep))) \/
+                                ([] (proc-status(3,sleep) -> <> proc-status (3,wait))) /\ ([] (proc-status(3,wait) -> <> proc-status (3,crit))) /\ ([] (proc-status(3,crit) -> <> 
+proc-status (3,sleep))) \/
+                                ([] (proc-status(4,sleep) -> <> proc-status (4,wait))) /\ ([] (proc-status(4,wait) -> <> proc-status (4,crit))) /\ ([] (proc-status(4,crit) -> <> 
+proc-status (4,sleep))) \/
+                                ([] (proc-status(5,sleep) -> <> proc-status (5,wait))) /\ ([] (proc-status(5,wait) -> <> proc-status (5,crit))) /\ ([] (proc-status(5,crit) -> <> 
+proc-status (5,sleep)))
+                              )
+              ) .
+reduce in ABSTRACT-BAKERY-CHECK : modelCheck(initial(5), []([](proc-status(5, crit) -> <> proc-status(5, sleep)) /\ ([](proc-status(5, sleep) -> <> proc-status(5,
+    wait)) /\ [](proc-status(5, wait) -> <> proc-status(5, crit))) \/ ([](proc-status(4, crit) -> <> proc-status(4, sleep)) /\ ([](proc-status(4, sleep) -> <> proc-status(4,     
+    wait)) /\ [](proc-status(4, wait) -> <> proc-status(4, crit))) \/ ([](proc-status(3, crit) -> <> proc-status(3, sleep)) /\ ([](proc-status(3, sleep) -> <> proc-status(3,     
+    wait)) /\ [](proc-status(3, wait) -> <> proc-status(3, crit))) \/ ([](proc-status(1, crit) -> <> proc-status(1, sleep)) /\ ([](proc-status(1, sleep) -> <> proc-status(1,     
+    wait)) /\ [](proc-status(1, wait) -> <> proc-status(1, crit))) \/ [](proc-status(2, crit) -> <> proc-status(2, sleep)) /\ ([](proc-status(2, sleep) -> <> proc-status(2,      
+    wait)) /\ [](proc-status(2, wait) -> <> proc-status(2, crit)))))))) .
+rewrites: 36272 in 546ms cpu (549ms real) (66325 rewrites/second)
+result Bool: true
+
+--- [Q9]
+Maude> search initial(5) =>* [[ < idDisp:Nat : Dispenser | next: next1:Nat, last: last1:Nat > < idBProc1:Nat : BProcess | mode: crit, number: num1:Nat > < idBProc2:Nat : BProcess | mode: crit, number: 
+num2:Nat > c:Configuration ]] .
+
+--- [Q11]
+
+search initial(5) =>! g:GBState .
+Maude> search initial(5) =>! g:GBState .
+search in ABSTRACT-BAKERY+ : initial(5) =>! g:GBState .
+
+No solution.
+states: 651  rewrites: 214589 in 156ms cpu (154ms real) (1373369 rewrites/second)
+
+Maude> search initial(5) =>* [[ < idDisp:Nat : Dispenser | next: next1:Nat, last: last1:Nat > < idBProc1:Nat : BProcess | mode: crit, number: num1:Nat > < idBProc2:Nat : BProcess | mode: crit, number: num2:Nat > c:Configuration ]] .
+search in ABSTRACT-BAKERY+ : initial(5) =>* [[c < idDisp:Nat : Dispenser | next: next1:Nat,last: last1:Nat > < idBProc1:Nat : BProcess | mode: crit,number: num1 > < idBProc2:Nat
+    : BProcess | mode: crit,number: num2 >]] .
+
+No solution.
+states: 651  rewrites: 214589 in 156ms cpu (156ms real) (1373369 rewrites/second)
+
+
