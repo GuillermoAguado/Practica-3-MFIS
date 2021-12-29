@@ -136,6 +136,7 @@ mod PARALLEL++ is
     vars N X : Int .
     var  T : Test . 
     var  E : Expression .
+    var BE : BExpression .
     vars N1 N2 N3 : Int .
     var AC : ArrayContent .
     vars B1 B2 : Bool .
@@ -162,9 +163,15 @@ mod PARALLEL++ is
     crl {[I, (Q := AC) ; R] | S, M}
         => {[I, R] | S, [Q, AC] M}
         if Q in M =/= true .
-    ---Asignacion Bools
+    ---Asignacion Posicion Arrays
+    rl {[I, (Q[N1] := E) ; R] | S, [Q, AC] M}
+        => {[I, R] | S, [Q, modificarArray(AC, N1, eval(E, [Q, AC] M))] M} .
+    ---Asignacion Arrays de Bools
     crl {[I, (BQ := BAC) ; R] | S, M}
         => {[I, R] | S, [BQ, BAC] M}
         if BQ in M =/= true .
-
+    ---Asignacion Posicion Arrays de Bool
+    rl {[I, (BQ[N1] := BE) ; R] | S, [BQ, BAC] M}
+        => {[I, R] | S, [BQ, modificarBArray(BAC, N1, eval(BE, [BQ, BAC] M))] M} .
+    
 endm
