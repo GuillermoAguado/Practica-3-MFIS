@@ -136,12 +136,19 @@ mod PARALLEL++ is
     var  T : Test . 
     var  E : Expression .
     
+    op modificarArray : ArrayContent Expression Expression -> ArrayContent .
+    op modificarBArray : ArrayContent Expression Expression -> ArrayContent .  
+
+    ---if then else fi
     rl {[I, if T then P1 else P2 fi ; R] | S, M} => 
       {[I, if eval(T,M) then P1 else P2 fi ; R] | S, M} .
-
+    ---repeat until
     rl {[I, repeat P1 until T li ; R] | S, M}
       => {[I, P1 ; if eval(T, M) 
                    then skip
                    else (repeat P1 until T li)
                    fi ; R] | S, M} .
+    ---Asignacion Arrays
+
+    ---Asignacion Bools
 endm
