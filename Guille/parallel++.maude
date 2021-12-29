@@ -17,28 +17,7 @@ fmod MEMORY++ is
     eq BQ in [BQ, B] M = true . ---- incomplete, only positive cases
 endfm
 
-eof
----- Test comparing the contents of a named memory location to an integer. 
----- By default, value of non-allocated Qid is 0.
-
-fmod TESTS++ is
-    inc MEMORY .
-    sort Test .
-    op _=_ : Qid Int -> Test .
-    op _>’_ : Qid Int -> Test .
-    op _&_ : Test Test -> Test [assoc] .
-    op eval : Test Memory -> Bool .
-    var Q : Qid . 
-    var M : Memory .
-    var N N’ K : Int . 
-    vars T T’ : Test .
-    eq eval(Q = N, [Q, N’] M) = N == N’ .
-   ceq eval(Q = N, M) = N == 0 if Q in M =/= true .
-    eq eval(Q >’ N, [Q, K] M) = K > N .
-   ceq eval(Q >’ N, M) = 0 > N if Q in M =/= true .
-    eq eval(T & T’, M) = eval(T, M) and eval(T’, M) .
-endfm
-
+--- Primero definimos las expresiones porque debemos usarlas en test
 ---- Syntax for arithmetic expressions, and their evaluation semantics.
 ---- To avoid evaluation of expressions by themselves, the operators
 ---- + and * are specified as constructors with syntax +’ and *’ 
@@ -60,6 +39,29 @@ fmod EXPRESSION++ is
     eq eval(E +’ E’, M) = eval(E, M) + eval(E’, M) .
     eq eval(E *’ E’, M) = eval(E, M) * eval(E’, M) .
     eq eval(E -’ E’, M) = eval(E, M) - eval(E’, M) .
+endfm
+
+eof
+
+---- Test comparing the contents of a named memory location to an integer. 
+---- By default, value of non-allocated Qid is 0.
+
+fmod TESTS++ is
+    inc MEMORY .
+    sort Test .
+    op _=_ : Qid Int -> Test .
+    op _>’_ : Qid Int -> Test .
+    op _&_ : Test Test -> Test [assoc] .
+    op eval : Test Memory -> Bool .
+    var Q : Qid . 
+    var M : Memory .
+    var N N’ K : Int . 
+    vars T T’ : Test .
+    eq eval(Q = N, [Q, N’] M) = N == N’ .
+   ceq eval(Q = N, M) = N == 0 if Q in M =/= true .
+    eq eval(Q >’ N, [Q, K] M) = K > N .
+   ceq eval(Q >’ N, M) = 0 > N if Q in M =/= true .
+    eq eval(T & T’, M) = eval(T, M) and eval(T’, M) .
 endfm
 
 ---- Syntax for a trival sequential programming language. 
