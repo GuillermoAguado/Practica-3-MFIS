@@ -1,7 +1,7 @@
 load parallel.maude
 ---- PARALLEL++: A simple parallel++ language and its rewriting logic semantics.
 
----- Memory model with locations named by BQids holding Bools.
+---- Memory model with locations named by Qids holdings Ints and ArrayContents & BQids holding Bools and BArrayContents.
 
 fmod MEMORY++ is
     inc MEMORY .
@@ -69,8 +69,9 @@ eof
 ---- UserStatements which are not LoopingUserStatements abstract out terminating program fragments.
 
 fmod SEQUENTIAL++ is
-    inc TESTS .
-    inc EXPRESSION .
+    inc TESTS++ .
+    inc EXPRESSION++ .
+    inc SEQUENTIAL .
     sorts UserStatement LoopingUserStatement Program .
     subsort LoopingUserStatement < UserStatement < Program .
     op skip : -> Program .
