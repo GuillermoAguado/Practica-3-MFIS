@@ -22,23 +22,18 @@ endfm
 ---- To avoid evaluation of expressions by themselves, the operators
 ---- + and * are specified as constructors with syntax +’ and *’ 
 fmod EXPRESSION++ is
-    inc MEMORY . 
-    sort Expression .
-    subsorts Qid Int < Expression .
-    op _+’_ : Expression Expression -> Expression [ctor] .
-    op _*’_ : Expression Expression -> Expression [ctor] .
-    op _-’_ : Expression Expression -> Expression [ctor] .
-    op eval : Expression Memory -> Int .
-    var Q : Qid . 
+    inc MEMORY++ . 
+    sort BExpression .
+    subsorts BQid Bool < BExpression .
+
+    op eval : BExpression Memory -> Bool .
+    var BQ : BQid . 
     var M : Memory . 
-    vars N N’ : Int . 
-    vars E E’ : Expression .
-    eq eval(N, M) = N .
-    eq eval(Q, [Q, N] M) = N . 
-   ceq eval(Q,M) = 0 if Q in M =/= true .
-    eq eval(E +’ E’, M) = eval(E, M) + eval(E’, M) .
-    eq eval(E *’ E’, M) = eval(E, M) * eval(E’, M) .
-    eq eval(E -’ E’, M) = eval(E, M) - eval(E’, M) .
+    vars B1 B2 : Bool . 
+    vars BE1 BE2 : BExpression .
+    eq eval(B1, M) = B1 .
+    eq eval(BQ, [BQ, B1] M) = B1 . 
+   ceq eval(BQ,M) = false if BQ in M =/= true .
 endfm
 
 eof
