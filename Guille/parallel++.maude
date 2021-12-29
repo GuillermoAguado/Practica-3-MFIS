@@ -22,7 +22,8 @@ endfm
 ---- To avoid evaluation of expressions by themselves, the operators
 ---- + and * are specified as constructors with syntax +’ and *’ 
 fmod EXPRESSION++ is
-    inc MEMORY++ . 
+    inc MEMORY++ .
+    inc EXPRESSION . 
     sort BExpression .
     subsorts BQid Bool < BExpression .
 
@@ -36,29 +37,32 @@ fmod EXPRESSION++ is
    ceq eval(BQ,M) = false if BQ in M =/= true .
 endfm
 
-eof
-
 ---- Test comparing the contents of a named memory location to an integer. 
 ---- By default, value of non-allocated Qid is 0.
 
 fmod TESTS++ is
-    inc MEMORY .
-    sort Test .
-    op _=_ : Qid Int -> Test .
-    op _>’_ : Qid Int -> Test .
-    op _&_ : Test Test -> Test [assoc] .
-    op eval : Test Memory -> Bool .
-    var Q : Qid . 
+    inc EXPRESSION++ .
+    inc TESTS .
+
+    op _=_ : Expression Expression -> Test .
+    op _>’_ : Expression Expression -> Test .
+    op _!=_ : Expression Expression -> Test .
+    op _=_ : BExpression BExpression -> Test .
+    op _!=_ : BExpression BExpression -> Test .
+
     var M : Memory .
-    var N N’ K : Int . 
+    vars E1 E2 E3 : Expression .
+    vars BE1 BE2 : BExpression . 
     vars T T’ : Test .
-    eq eval(Q = N, [Q, N’] M) = N == N’ .
-   ceq eval(Q = N, M) = N == 0 if Q in M =/= true .
-    eq eval(Q >’ N, [Q, K] M) = K > N .
-   ceq eval(Q >’ N, M) = 0 > N if Q in M =/= true .
-    eq eval(T & T’, M) = eval(T, M) and eval(T’, M) .
+    eq eval(E1 = E2, M) = eval(E1, M) == eval(E2, M) .
+    eq eval(E1 >’ E2, M) = eval(E1, M) > eval(E2, M) .
+    eq eval(E1 != E2, M) = eval(E1, M) =/= eval(E2, M) .
+
+    eq eval(BE1 = BE2, M) = eval(BE1, M) == eval(BE2, M) .
+    eq eval(BE1 != BE2, M) = eval(BE1, M) =/= eval(BE2, M) .
 endfm
 
+eof
 ---- Syntax for a trival sequential programming language. 
 ---- We allow abstracting out program fragments as elements of sorts LoopingUserStatement and UserStatement. 
 ---- LoopingUserStatements abstract out potentially nonterminating program fragments. 
